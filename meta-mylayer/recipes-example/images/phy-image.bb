@@ -1,0 +1,16 @@
+#SUMMARY = "A small boot image for SBCS lerners"
+#LICENSE = "MIT"
+#inherit core-image
+#IMAGE_INSTALL = "packagegroup-core-boot"
+#IMAGE_ROOTFS_SIZE ?= "8192"
+#IMAGE_INSTALL +="usbutils"
+require recipes-core/images/core-image-minimal.bb
+#IMAGE_INSTALL:append = "usbutils"
+#IMAGE_FEATURES = "ssh-server-dropbear debug-tweaks splash"
+#IMAGE_INSTALL +="myheello"
+#IMAGE_INSTALL += "calculator"
+#IMAGE_INSTALL += "gitrepso"
+IMAGE_INSTALL  += "mystatic-dev mystatic-staticdev"
+#IMAGE_INSTALL += "auto-hello"
+#IMAGE_INSTALL += "hello"
+#IMAGE_INSTALL += "myappend"
