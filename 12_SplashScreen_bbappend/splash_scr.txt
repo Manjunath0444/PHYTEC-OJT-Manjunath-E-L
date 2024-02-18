@@ -1,0 +1,126 @@
+splash screen
+--------------
+
+We have enabled splash screen by
+
+IMAGE_FEATURES += "splash"
+
+We get a splash screen with yocto logo
+
+psplash
+---------
+
+By default, this screen is provided by psplash
+
+PSplash is a userspace graphical boot splash screen for mainly embedded Linux devices supporting a 16bpp or 32bpp framebuffer.
+
+Recipe: psplash found under "poky/meta-poky/recipes-core"
+
+It uses an encoded image psplash-poky-img.h which it compiles /usr/bin/psplash to binary
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Changing custom splash screen
+-----------------------------
+
+Psplash expects an image to be in header file format, so you need to convert your image into a header file format by using script called "make-image-header.sh"
+
+source - http://git.yoctoproject.org/cgit/cgit.cgi/psplash/tree/make-image-header.sh
+
+Command:
+--------
+
+./make-image-header.sh <path_to_image_file> <NAME>
+
+$ ./make-image-header.sh logo.png POKY
+
+Rename it to psplash-poky-img.h
+
+We can give a  different NAME but it requires modification to source psplash.c
+
+$ mv logo-img.h psplash-poky-img.h
+
+Replace your generated image header in poky/meta-poky/recipes-core/psplash/files
+
+
+---------------------------------------------------------------------------------
+Changing the default splash screen of yocto to our custom image 
+---------------------------------------------------------------------------------
+
+$ bitbake -c devshell psplash
+
+devshell opened and make changes overhere
+
+$ cp /home/chaman/work/SBCS/06_Yocto_Project/class_notes/12_SplashScreen_bbappend/logo.png .
+
+$ ./make-image-header.sh logo.png POKY
+
+$ mv logo-img.h psplash-poky-img.h
+
+$ exit
+
+we generated logo.png image header file lets copy it in psplash recipe 
+
+
+$ bitbake -e psplash | grep ^WORKDIR=
+
+$ ls
+
+$ cd /poky/meta/recipes-core/psplash/files/
+
+$ cp {WORKDIR}/git/psplash-poky-img.h psplash-poky-img.h
+
+$ git status
+
+in meta-poky layer we also have psplash bbappend so lets remove that
+
+$ cd /poky/meta-poky/recipes-core/psplash/files/
+ 
+$ ls
+
+$ rm psplash-poky-img.h
+
+goto conf/local.conf and add 
+
+IMAGE_FEATURES += "splash"
+
+
+$ bitbake -c cleanall psplash
+
+$ bitbake phy-image
+
+
+
+=============================================================================================
+
+
+
+
+
+
+
+

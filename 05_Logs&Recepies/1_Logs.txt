@@ -1,0 +1,134 @@
+		Logs
+	      --------
+		
+		
+		
+		
+yocto-check-layer
+------------------
+
+The yocto-check-layer script provides you a way to assess how compatible your layer is with the Yocto Project
+
+You should use this script if you are planning to apply for Yocto Project Compatible Program
+
+$ source oe-init-build-env
+
+$ yocto-check-layer your_layer_directory
+ 
+ 
+ 
+ 
+ 
+ 
+ Where do I find build logs?
+-----------------------------
+
+For each individual recipe, there is a "temp" directory under the work directory
+
+Within the build system this directory is pointed to by the T variable, so if you need to you can find it by using bitbake -e
+
+$ bitbake -e <recipename> | grep ^T=
+
+Each task that runs for a recipe produces "log" and "run" files in ${WORKDIR}/temp
+
+You can find log files for each task in the recipe's temp directory
+
+Log files are named log.taskname (e.g. log.do_configure, log.do_fetch, and log.do_compile)
+
+For convenience, symbolic links are kept updated by BitBake, pointing to the last log files using the pattern log.<task>
+
+We can run the scripts for every task with the pattern run.<task>.<pid> 
+
+These files contain the commands which produce the build results
+
+
+
+
+
+
+
+Logging Information during task execution
+-------------------------------------------
+
+The logging utilities provided by BitBake are very useful to trace the code execution path.
+
+BitBake provides logging functions for use in Python and Shell Script code, as described
+
+Python: For use within Python functions, BitBake supports several log levels, which are bb.fatal, bb.error, bb.warn, bb.note, bb.plain, and bb.debug
+
+Shell Script: For use in Shell Script functions, the same set of log levels exists and is accessed with a similar syntax: bbfatal, bberror, bbwarn, bbnote, bbplain, and bbdebug
+
+There is one subtle difference between the use of the logging functions in Python and Shell Scripting.
+
+The logging functions in Python are directly handled by BitBake, seen on the console, and stored in the execution log that can be seen inside build/tmp/log/cooker/<machine>
+
+When the logging functions are used in Shell Script, the information is outputted on the task's respective task log file, which is available in build/tmp/work/<arch>/<recipe name>/<software version>/temp
+
+
+
+
+
+
+
+
+
+
+
+
+Logging
+-----------
+
+bb.fatal and bbfatal: These have the highest priority of logging messages as they print the message and terminate the processing. They cause the build to be interrupted.
+
+bb.error and bberror: They are used to display an error but do not force the build to stop.
+
+bb.warn and bbwarn: They are used to warn users about something.
+
+bb.note and bbnote: These add a note to the user. They are only informative.
+
+bb.plain and bbplain: These output a message.
+
+bb.debug and bbdebug: These add debugging information that is shown depending on the debug level used.
+
+
+
+
+
+
+
+
+
+
+do_compile() {
+ bbplain "*************************************"
+ bbplain "* *"
+ bbplain "* Example recipe created by bitbake-layers *"
+ bbplain "* *"
+ bbplain "*************************************"
+}
+
+
+
+
+
+
+
+
+
+
+
+Debug Output
+------------
+
+You can see the debug output from Bitbake by using the -D option
+
+The debug output gives more information about what BitBake is doing and the reason behind it
+
+Each -D option you use increases the logging level.
+
+The most common usage is -DDD
+
+
+
+
+

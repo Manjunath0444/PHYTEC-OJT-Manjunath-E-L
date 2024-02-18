@@ -1,0 +1,340 @@
+What happens when there are two recipe with the same name and you say bitbake <target>?
+---------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PREFERRED_VERSION
+-------------------
+
+If there are multiple versions of recipes available, this variable determines which recipe should be given preference
+
+You must always suffix the variable with the PN you want to select, and you should set PV accordingly for precedence.
+
+The PREFERRED_VERSION variable supports limited wildcard use through the "%" character.
+
+You can use the character to match any number of characters, which can be useful when specifying versions that contain long revision numbers that potentially change.
+
+Here are two examples:
+
+     PREFERRED_VERSION:python = "2.7.3"
+     PREFERRED_VERSION:linux-yocto = "4.12%"
+
+
+goto myhello recipe and try this
+-----------------------------------
+
+$ cp myhello_0.1.bb myhello_0.2.bb
+
+$ bitbake myhello
+
+$ bitbake -c cleanall myhello
+
+
+it will pick the latest version so if we want my older version so
+you have to mention the variable
+
+$ vim conf/local.conf
+
+	PREFERRED_VERSION:myhello = "0.1"
+
+
+$ bitbake myhello
+
+$ grep -nr 'PREFERED_VERSION' meta-poky/conf/
+
+
+$ grep -nr 'PREFERED_VERSION' meta-yocto-bsp/conf/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Compatibility
+----------------
+
+A recipe is considered incompatible with the currently configured machine when either or both 
+	COMPATIBLE_MACHINE variable and 
+	COMPATIBLE_HOST variables 
+
+specify compatibility with a machine other than that of the current machine or host.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+COMPATIBLE_MACHINE
+-----------------
+
+A list of the machines supported by your new recipe.
+
+This variable in the example recipe is set by default to a regular expression that matches only the empty string, "(^$)"
+
+$ bitbake -e myhello | grep ^COMPATIBLE_MACHINE=
+
+You can use the variable to stop recipes from being built for machines with which the recipes are not compatible.
+
+Stopping these builds is particularly useful with kernels.
+
+For example, to support the qemux86 and qemux86-64 machines, use the following form:
+
+     COMPATIBLE_MACHINE = "qemux86|qemux86-64"
+
+Try:
+-------
+
+Modify myhello recipe to support only qemuarm
+
+COMPATIBLE_MACHINE = "qemuarm"
+
+
+
+$ grep -nr 'COMPATIBLE_MACHINE' meta/recipes-*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Build for selected architectures only
+---------------------------------------
+
+To enable specific architectures and disallow all others:
+
+        COMPATIBLE_MACHINE = "(-)"
+        COMPATIBLE_MACHINE_x86 = "(.*)"
+        COMPATIBLE_MACHINE_x86-64 = "(.*)"
+        COMPATIBLE_MACHINE_armv6 = "(.*)"
+        COMPATIBLE_MACHINE_armv7a = "(.*)"
+
+In this case we allow x86, x86-64, armv6, and armv7, but disallow all others.
+
+To allow all architectures but turn off specific ones (a sort of "INCOMPATIBLE_MACHINE", if you will...):
+
+        COMPATIBLE_MACHINE_armv4 = "(!.*armv4).*"
+        COMPATIBLE_MACHINE_armv5 = "(!.*armv5).*"
+        COMPATIBLE_MACHINE_mips64 = "(!.*mips64).*"
+
+Here armv4, armv5, and mips64 are not allowed, but by default anything else is.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+COMPATIBLE_HOST
+----------------
+
+You can use this variable to stop recipes from being built for classes of systems with which the recipes are not compatible.
+
+The variable also helps to increase parsing speed since the build system skips parsing recipes not compatible with the current system.
+
+
+$ cd /myhello
+
+$ vim myhello_01.bb
+
+	COMPATIBLE_MACHINE = "qemuarm"
+	
+$ bitbake myhello
+
+Try:
+----------
+
+COMPATIBLE_HOST = "qemuarm" in myhello
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Replicating a build offline
+-----------------------------
+
+It can be useful to take a "snapshot" of upstream sources used in a build and then use that "snapshot" later to replicate the build offline.
+
+To do so, you need to first prepare and populate your downloads directory your "snapshot" of files.
+
+Once your downloads directory is ready, you can use it at any time and from any machine to replicate your build.
+
+Follow these steps to populate your Downloads directory:
+---------------------------------------------------------
+
+1.Create a Clean Downloads Directory: 
+-------------------------------------
+
+Start with an empty downloads directory (DL_DIR).
+
+You start with an empty downloads directory by either removing the files in the existing directory
+
+or by setting DL_DIR to point to either an empty location or one that does not yet exist.
+
+2. Generate Tarballs of the Source Git Repositories
+----------------------------------------------------
+
+Edit your local.conf configuration file as follows:
+
+     DL_DIR = "/home/your-download-dir/"
+     BB_GENERATE_MIRROR_TARBALLS = "1"
+
+During the fetch process in the next step, BitBake gathers the source files and creates tarballs in the directory pointed to by DL_DIR
+
+See the BB_GENERATE_MIRROR_TARBALLS variable for more information
+
+3. Populate Your Downloads Directory Without Building
+-----------------------------------------------------------
+
+Use BitBake to fetch your sources but inhibit the build:
+
+     $ bitbake target --runonly=fetch
+
+The downloads directory (i.e. ${DL_DIR}) now has a "snapshot" of the source files in the form of tarballs, which can be used for the build.
+
+4. Optionally Remove Any Git or other SCM Subdirectories From the Downloads Directory:
+--------------------------------------------------------------------------------------
+
+If you want, you can clean up your downloads directory by removing any Git or other Source Control Management (SCM) subdirectories such as ${DL_DIR}/git2/*. 
+
+The tarballs already contain these subdirectories.
+
+Once your downloads directory has everything it needs regarding source files, you can create your "own-mirror" and build your target.
+
+Understand that you can use the files to build the target offline from any machine and at any time.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Important Point regarding offline build
+-----------------------------------------
+
+The offline build does not work if recipes attempt to find the latest version of software by setting SRCREV to ${AUTOREV}:
+
+     SRCREV = "${AUTOREV}"
+
+When a recipe sets SRCREV to ${AUTOREV}, the build system accesses the network in an attempt to determine the latest version of software from the SCM.
+
+Typically, recipes that use AUTOREV are custom or modified recipes.
+
+Recipes that reside in public repositories usually do not use AUTOREV.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+BB_NO_NETWORK
+---------------
+
+BB_NO_NETWORK = "1" in local.conf
+
+When this is set, bitbake will not try to access the network.
+
+
+
+
+
+
+
+
+
+
+

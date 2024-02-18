@@ -1,0 +1,230 @@
+Extending a Recipe
+------------------------------
+
+It is a good practice not to modify recipes available in Poky
+
+But it is sometimes useful to modify an existing recipe
+
+Copy Approach:
+--------------
+Copy recipe in your layer and make modifications in the recipe
+
+Extend Approach:
+-----------------
+The BitBake build engine allows to modify a recipe by extending it
+
+What is Bitbake Append?
+--------------------------
+
+A recipe that appends Metadata to another recipe is called a BitBake append file.
+
+File Extension: .bbappend
+
+You can use a .bbappend file in your layer to make additions or changes to the content of another layer's recipe without having to copy the other layer's recipe into your layer
+
+.bbappend file	resides in your layer
+
+.bb recipe file to which you are appending Metadata resides in a different layer.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Benefits of bbappend
+---------------------
+
+If you were copying recipes, you would have to manually merge changes as they occur.
+
+Being able to append information to an existing recipe not only avoids duplication, but also automatically applies recipe changes from a different layer into your layer.
+
+Points to Consider while working with .bbappend
+-----------------------------------------------
+
+1. Appended files must have the same root name as the recipe they extend
+
+	Eg. example_0.1.bbappend applies to example_0.1.bb
+
+This means the original recipe and append file names are version number-specific.
+
+If the corresponding recipe is renamed to update to a newer version, you must also rename and possibly update the corresponding .bbappend as well.
+
+During the build process, BitBake displays an error on starting if it detects a .bbappend file that does not have a corresponding recipe with a matching name
+
+2. If adding new files, you must prepend the FILESEXTRAPATHS variable with the path to files’ directory
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Prioritizing Your Layer
+------------------------
+
+Each layer is assigned a priority value. 
+
+Priority values control which layer takes precedence if there are recipe files with the same name in multiple layers. 
+
+For these cases, the recipe file from the layer with a higher priority number takes precedence.
+
+Priority values also affect the order in which multiple .bbappend files for the same recipe are applied. 
+
+To specify the layer's priority manually, use the BBFILE_PRIORITY variable and append the layer's root name:
+
+     BBFILE_PRIORITY_mylayer = "1"
+
+Note: the layer priority does not currently affect the precedence order of .conf or .bbclass files.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Use .bbappend for splash screen
+
+---------------------------------------------------------------------------------
+Changing the default splash screen of yocto to our custom image 
+---------------------------------------------------------------------------------
+
+$ bitbake -c devshell psplash
+
+devshell opened and make changes overhere
+
+$ cp /home/chaman/work/SBCS/06_Yocto_Project/class_notes/12_SplashScreen_bbappend/logo.png .
+
+$ ./make-image-header.sh logo.png POKY
+
+$ mv logo-img.h psplash-poky-img.h
+
+$ exit
+
+we generated header file from logo.png nad rename it to psplash-poky-img.h,
+now lets create same structure as meta layer in our custom layer
+and then copy it to psplash recipe
+
+
+$ cd meta-mylayer
+
+$ mkdir recipes-core 
+$ cd recipes-core
+
+$ mkdir psplash
+$ cd psplash
+
+$ mkdir files
+$ cd files
+
+$ cp {WORKDIR}/git/psplash-poky-img.h .		(open devshell of psplash and then from there 
+							copy the psplash-poky-img.h and paste in files folder)
+
+$ cd ..
+
+$ vim psplash_git.bbappend
+
+	FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
+	
+$ bitbake -c cleanall phy-image
+
+goto conf/local.conf and add 
+
+	IMAGE_FEATURES += "splash"
+	
+$ bitbake phy-image
+
+$ runqemu
+
+======================================================================================
+
+$ vim /poky/meta/recipes-core/psplash/psplash_git.bb
+
+$ cd /poky/meta-poky/recipes-core/psplash/
+
+$ ls
+
+$ vim psplash_git.bbappend
+
+$ vim files/psplash-poky-img.h
+
+so if we see meta-poky layer and meta-mylayer both are having the psplash_git.bbappend files
+but why it took from meta-mylayer file and give the splash screen logo as mentioned in meta-mylayer ?
+
+bcoz priority of meta-mylayer is '6' and meta-poky is '5' so the priority of meta-mylayer is more
+than meta-poky.
+
+if we change the priority of meta-mylayer to '4'
+then it will picked up screen logo mentioned in meta-poky.
+
+
+
+
+
+
+
+
+
+
+
+How to validate whether my bbappend is successfully applied to recipe?
+----------------------------------------------------------------------
+
+$ bitbake-layers show-appends
+
+Lists .bbappend files and the recipe files to which they apply.
+
+
+
+
+
+

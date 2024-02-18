@@ -1,0 +1,693 @@
+Basics
+---------
+
+What is clean build?
+-----------------------
+	Clean build is building codebase from scratch.
+
+	Advantage - It ensures that all parts are built fresh and no possibility of stale data exists that can cause problems
+	
+	Disadvantage - Building from scratch takes much longer as it generally means rebuilding things that do not necessarily need to be rebuilt
+	
+
+What is incremental build?
+-----------------------------
+	Incremental build is a way of:
+		1. Identifying things that do not necessarily need to be rebuilt
+		2. Building only those things which have been modified since last successful build
+		
+	Advantage - It takes very less time
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Incremental build in Yocto
+--------------------------------
+The Yocto project builds everything from source.
+
+When you create a new build, only the configuration files are created.
+
+The build process then compiles everything from scratch, including the cross-compilation toolchain and some native tools important for the build
+
+This process can take a long time
+
+How is incremental build supported by Yocto?
+----------------------------------------------
+
+shared state cache
+==================
+
+Yocto project implements a shared state cache mechanism that is used for incremental builds with the aim to build only the strictly necessary components for a given change
+
+For this to work, the build system calculates a checksum of the given input data to a task
+
+If the input data changes, the task needs to be rebuilt.
+
+If all inputs remained the same, build artifacts will be copied from the sstate-cache to the destination
+
+This task as well all tasks this was dependent on, will be skipped
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Shared State Cache(sstate-cache)
+--------------------------------
+
+Some questions regarding incremental build supported by sstate-cache?
+
+Question1: How does pieces of the system have changed and what pieces have not changed detected?
+----------
+Answer1:
+--------
+        the build system detects changes in the "inputs" to a given task by creating a checksum (or signature) of the task's inputs.
+
+        If the checksum changes, the system assumes the inputs have changed and the task needs to be rerun
+
+Question2: How are changed pieces of software removed and replaced by sstate-cache?
+----------
+Answer2:
+--------
+        the shared state (sstate) code tracks which tasks add which output to the build process
+        This means the output from a given task can be removed, upgraded or otherwise manipulated.
+
+Question3: How are pre-built components that do not need to be rebuilt from scratch used when they are available?
+---------
+Answer3:
+--------
+        build system can fetch the sstate objects from remote locations and install them if they are deemed to be valid
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+sstate-cache
+---------------
+
+From-scratch builds, even using server grade machines (with 40+ cores) will take just under an hour to complete.
+
+Additionally this estimate is just for minimal, stripped down images;
+
+Bigger images that bring up more than just core functionality and support things like web browsers/multimedia would take much longer (on the order of several hours).
+
+Build Performance
+------------------
+
+To illustrate how useful the sstate-cache can be:
+
+	Build, no external sstate-cache: ~1.5 Hours
+
+		time it takes to parse all of the files, execute all of the tasks.
+
+	Re-build with no changes: ~10 sec
+
+		time it takes to check all the hashsums and figure out there’s nothing to do, parsing is already cached
+		
+		$ time bitbake phy-image
+	
+	Removing tmp/ and rerunning build: ~1.5 min
+
+		time it takes to restore minimum necessary build artifacts from the sstate-cache, build image, etc
+		
+$ cp build/sstate-cache ../
+
+$ vim conf/local.conf 
+update the 
+	SSTATE_DIR ?= "${TOPDIR}/../sstate-cache"
+	
+$ rm -rf build
+
+$ source source/poky/oe-init-build-env
+
+$ ls
+
+$ vim conf/local.conf 
+update the 
+	SSTATE_DIR ?= "${TOPDIR}/../sstate-cache"
+	
+$ bitbake-layers show-layers
+
+$ bitbake-layers add-layer ../source/meta-mylayer/
+
+$ time bitbake phy-image
+
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+Tasks
+----------
+
+As a Yocto developer, we tend to think in terms of recipes, but BitBake’s fundamental unit of work is a task
+
+BitBake works on a "per-task" basis rather than a "per-recipe" basis to determine what parts of the system need to be built
+
+What is a task?
+----------------
+
+A task is a shell or Python script that gets executed to accomplish something, usually generating some form of output
+
+Eg. do_install, do_package
+
+Often a task depends on the output from some other task and BitBake offers mechanisms for specifying these dependencies
+
+BitBake will execute the tasks with as much parallelism as possible while maintaining dependency order.
+
+What's the benefit of per-task over per-recipe approach?
+---------------------------------------------------------
+
+Consider a case where IPK packaging backend enabled and then switching to DEB. do_install and do_package task o/ps are still valid.
+
+With per-recipe approach, you would have to invalidate the whole build and rerun it.
+
+Rerunning everything is not the best solution.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+How does shared state cache work?
+-----------------------------------
+
+Bitbake uses 
+
+	a) Checksums (or signatures)
+	b) Setscene
+
+to determine if a task needs to be run or not
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Signature/Checksum
+------------------
+
+What is a checksum?
+-------------------
+
+a unique signature of a task's inputs
+	configuration (local.conf/distro.conf etc)
+	recipe (.bb/.bbappend/functions etc)
+	files (src_uri)
+
+Note: The Yocto and BitBake manuals tend to use the terms task hash, checksum, and signature interchangeably.
+
+Checksums are calculated on a per-task basis to minimize rebuilding unnecessarily
+
+How are checksums/signatures calculated?
+----------------------------------------
+
+Since a task is just a shell or Python script, taking the hash of the script should tell us when it changes.
+
+We also need to consider the task dependencies as they can easily affect the output of this task
+
+So task hash is combination of 
+
+	the hash of the script +
+	the hashes of all the dependencies
+
+If any input of the task change, the hash will change
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SetScene
+------------
+
+Bitbake supports skipping tasks if prebuilt objects are available
+
+What is Setscene?
+-------------------
+
+The setscene process enables BitBake to handle "pre-built" artifacts.
+
+The ability to handle and reuse these artifacts allows BitBake the luxury of not having to build something from scratch every time
+
+BitBake needs to have reliable data indicating whether or not an artifact is compatible.
+
+Signatures, provide an ideal way of representing whether an artifact is compatible.
+
+If a signature is the same, an object can be reused.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+How setscene works?
+---------------------
+
+When BitBake is asked to build a given target
+
+	a) before building anything,  it first asks whether cached information is available for any of the targets it's building , or any of the intermediate targets.
+
+	b) If cached information is available, BitBake uses this information instead of running the main tasks.
+
+
+Setscene Tasks(do_taskname_setscene)
+-------------------------------------
+$ bitbake -c listtasks myhello
+
+It is a version of the task where instead of building something, bitbake can skip to the end result and simply place a set of files into specific locations as needed.
+
+Not all tasks have a setscene variant
+
+Eg. do_patch, do_unpack do not have a setscene variant
+    do_package, do_populate_sysroot, do_deploy has a setscene variant
+
+The build system has knowledge of the relationship between these tasks and other preceding tasks.
+
+Eg
+
+if BitBake runs do_populate_sysroot_setscene for something, 
+	it does not make sense to run any of the do_fetch, do_unpack, do_patch, do_configure, do_compile, and do_install tasks
+
+if do_package needs to be run, BitBake needs to run those other tasks.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+How setscene works
+------------------
+
+BitBake runs in two phases.
+
+	a) setscene stage
+
+	b) actual build
+
+1) BitBake first calls the function defined by the BB_HASHCHECK_FUNCTION variable with a list of tasks and corresponding hashes it wants to build.
+
+$ bitbake -e | grep BB_HASHCHECK
+
+2) This function is designed to be fast and returns a list of the tasks for which it believes in can obtain artifacts.
+
+3) Next, for each of the tasks that were returned as possibilities, BitBake executes a setscene version of the task that the possible artifact covers.
+
+4) The setscene version of the task executes and provides the necessary artifacts returning either success or failure.
+
+5) After all the setscene tasks have executed, BitBake calls the remaining tasks which have no artifacts
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Stamps
+------------------
+BitBake uses checksums (or signatures) along with the setscene to determine if a task needs to be run.
+
+This signatures are present in STAMPS_DIR directory.
+
+$ bitbake -e | grep ^STAMPS_DIR=
+
+This directory holds information that BitBake uses for accounting purposes to track
+
+        what tasks have run and
+        when they have run
+
+The directory is sub-divided by architecture, package name, and version.
+
+The files in the directory are empty of data, BitBake uses the filenames and timestamps for tracking purposes.
+
+Stamp Files
+------------
+
+For each task that completes successfully, BitBake writes a stamp file into the STAMPS_DIR directory.
+
+File Name Format:
+-----------------
+
+The beginning of the stamp file's filename is determined by the STAMP variable
+
+the end of the name consists of the task's name and current input checksum.
+
+How does bitbake determine if a task is need to be rerun?
+--------------------------------------------------------
+
+BitBake checks if a stamp file with a matching input checksum exists for the task.
+
+If such a stamp file exists, the task's output is assumed to exist and still be valid.
+
+If the file does not exist, the task is rerun.
+
+
+
+$ bitbake -c cleanall myhello
+
+$ bitbake myhello
+
+$ cd {STAMPS_DIR}/core2-64-poky-linux/myhello
+
+$ ls
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+bitbake-dumpsig
+------------------
+
+Checksums can be examined using the bitbake-dumpsig command
+
+$ bitbake-dumpsig
+
+$ bitbake-dumpsig -t myhello compile   ------>give me sha of recipe
+
+This command returns the signature data in a readable format that allows you to examine the inputs used when the OpenEmbedded build system generates signatures
+
+For example, using bitbake-dumpsigs allows you to examine the do_compile task's “sigdata” for a C application
+
+Running the command also reveals that the “CC” variable is part of the inputs that are hashed. Any changes to this variable would invalidate the stamp and cause the do_compile task to run.
+
+Try modifying C Program and check signatures again
+
+Signature data can be generated with:
+
+$ bitbake -S none myhello
+
+
+
+goto myhello recipe and change some thing in userprog.c
+
+then see the hash value
+
+$ bitbake-dumpsig -t myhello compile   it's not change
+
+$ bitbake -S none myhello   ---------->sig data change i.e hash value of do compile changed
+
+you can verify by just going to
+
+$ cd {STAMPS_DIR}/core2-64-poky-linux/myhello
+
+$ ls
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+bitbake-diffsig
+-----------------
+
+Signature data can be generated by
+
+$ bitbake -S none <recipename>
+
+$ bitbake -S none myhello
+
+Then you can do ls on stamps directory to see which tasks were rerun
+
+You can observe that there are two sets of signature data (sigdata) for several tasks
+
+When trying to compare two versions of a given task, bitbake-diffsig can be used to dump the differences between two sigdata or siginfo revisions.
+
+ I can use bitbake-diffsigs to compare the signature files for the two different task invocation
+
+$ bitbake-diffsigs -t myhello do_compile
+
+$ bitbake-diffsigs -t myhello do_package
+
+$ bitbake-diffsigs -t myhello do_configure
+
+$ bitbake-diffsigs -t myhello do_fetch
+
+
+goto myhello/files
+
+	$ sha5sum userprog.c
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SSTATE_DIR
+----------
+
+You can control the location of the shared state directory through the SSTATE_DIR variable.
+
+You can reuse the directory for multiple builds or move the directory to another location.
+
+$ bitbake -e | grep ^SSTATE_DIR=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+bitbake tasks
+----------------
+
+$ bitbake -c clean <recipename>
+
+Removes all output files for a target from the do_unpack task onwards (i.e. do_unpack, do_configure, do_compile, do_install, and do_package.)
+
+Running this task does not remove the sstate cache files.
+
+$ bitbake -c cleanall <recipename>
+
+Removes all output files, shared state cache and downloaded source files for a target 
+
+$ bitbake -c cleansstate <recipename>
+
+Removes all output files and shared state cache for a target
+
+When you run the do_cleansstate task, the OpenEmbedded build system no longer uses any sstate. Consequently, building the recipe from scratch is guaranteed.
+
+Other options
+--------------
+
+--no-setscene         Do not run any setscene tasks. sstate will be ignored and everything needed, built.
+
+--setscene-only       Only run setscene tasks, don't run any real tasks.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+		
+		
+		
+		
+		
+		
+		
+		
+

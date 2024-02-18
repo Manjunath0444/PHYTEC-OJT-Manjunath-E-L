@@ -1,0 +1,356 @@
+How does bitbake myhello picks up myhello_0.1.bb recipe?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Providers
+------------
+
+What happens when you say bitbake <target>?
+--------------------------------------------
+
+1. Bitbake parses all the recipes
+2. Bitbake looks through the PROVIDES list for each of the recipe
+3. When the target matches PROVIDES list, it will build that recipe
+
+What is PROVIDES list?
+----------------------
+
+A PROVIDES list is the list of names by which the recipe can be known.
+
+By default, the PN is added automatically into the PROVIDES list.
+
+$ bitbake -e myhello | grep ^PROVIDES=
+
+What's the benefit of recipe adding names to PROVIDES list?
+-----------------------------------------------------------
+
+When a recipe uses PROVIDES, that recipe's functionality can be found under an alternative name or names other than the implicit PN name
+
+Eg. suppose a recipe named keyboard_1.0.bb contained the following:
+
+     PROVIDES += "fullkeyboard"
+
+The PROVIDES list for this recipe becomes "keyboard", which is implicit, and "fullkeyboard", which is explicit.
+
+
+exp-------->
+-------------------------
+
+$ bitbake myhello
+
+$ rm -rf tmp/cache/  -------> removing the cache folder, this folder have all the information of recipe parsing
+
+$ bitbake myhello    -------> so again the recipe parsing started and cache is generated
+
+$ bitbake myhello
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PROVIDES
+------------
+
+Try:
+--------
+
+Update PROVIDES of myhello to add 'myphy' and perform 'bitbake myphy'
+
+$ cd myhello recipe
+$ vim myhello_1.0.bb
+and add
+	
+	PROVIDES += "myphy"
+	
+$ bitbake -c cleanall myhello
+
+$ bitbake myhello
+
+$ bitbake -c cleansstate myhello
+
+$ bitbake myphy
+
+$ bitbake -e myhello | grep ^PROVIDES=
+
+
+
+
+Try:
+----------
+
+$ bitbake myhello1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PROVIDES
+-------------
+
+There are two namespaces that bitbake concerns itself with
+        a) recipe names(build time targets)
+        b) package names(run time targets)
+
+You can specify a build time target on the bitbake command line, but not a runtime target
+
+$ bitbake myhello (correct)
+$ bitbake myhello-dev (incorrect)
+
+You need to find the recipe that provides the package you are trying to build and build that instead (or simply add that package to your image and build the image)
+
+ In current versions bitbake will at least tell you which recipes have matching or similar-sounding runtime provides (RPROVIDES) so that you'll usually get a hint on which recipe you need to build.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+RPROVIDES
+-----------
+
+A list of package name aliases that a package also provides.
+
+These aliases are useful for satisfying runtime dependencies of other packages both during the build and on the target (as specified by RDEPENDS)
+
+As with all package-controlling variables, you must use overriden syntax
+
+RPROVIDES_${PN} = "libjson"
+
+
+$ cd /poky/meta
+
+$ grip -nr 'PROVIDES' recipes-*
+
+$ bitbake xxd 		-----> it will build vim package
+
+$ grip -nr 'RPROVIDES' recipes-*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Virtual Targets
+----------------
+
+If a recipe uses PROVIDES, the additional aliases are synonyms for the recipe 
+
+aliases can be useful satisfying dependencies of other recipes during the build as specified by DEPENDS
+
+PROVIDES allow you to have virtual targets.
+
+What is Virtual Target?
+-----------------------
+
+A virtual target is a name that corresponds to some particular functionality
+
+Examples: Kernel, Bootloader, C Library
+
+Recipes that provide the functionality in question list the virtual target in PROVIDES
+
+Recipes that depend on the functionality in question can include the virtual target in DEPENDS to leave the choice of provider open
+
+Conventionally, virtual targets have names on the form "virtual/function" (e.g. "virtual/kernel").
+
+The slash is simply part of the name and has no syntactical significance.
+
+Important Point:
+--------------
+When you use a virtual provider, you do not have to "hard code" a recipe name as a build dependency
+
+You can use the DEPENDS variable to state the build is dependent on virtual/kernel for example:
+
+     DEPENDS = "virtual/kernel"
+
+During the build, the OpenEmbedded build system picks the correct recipe needed for the virtual/kernel dependency based on the PREFERRED_PROVIDER variable.
+
+
+
+$ cd /poky/meta
+
+$ grep -nr 'virtual/' recipes-*
+
+$ grep -nr 'virtual/kernel' recipes-*
+
+$ grep -nr 'virtual/libc' recipes-*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PREFERRED_PROVIDER
+---------------------
+
+The PROVIDES list is only part of the solution for figuring out a target's recipes.
+
+Because targets might have multiple providers, BitBake needs to prioritize providers by determining provider preferences.
+
+PREFERRED_PROVIDER Determines which recipe should be given preference when multiple recipes provide the same item
+
+A common example in which a target has multiple providers is "virtual/kernel", which is on the PROVIDES list for each kernel recipe
+
+Each machine often selects the best kernel provider by using a line similar to the following in the machine configuration file:
+
+     PREFERRED_PROVIDER_virtual/kernel = "linux-yocto"
+
+
+$ grep -nr 'PREFERRED_PROVIDER_' .
+
+$ grep -nr 'PREFERRED_PROVIDER_' meta-yocto-bsp/conf/machine
+
+
+
+Try
+----------
+
+Add 'PROVIDES = "myphy"' to mygit recipe
+
+$ bitbake myphy
+
+You will get message "Consider defining a PREFERRED_PROVIDER entry to match myphy"
+
+PREFERRED_PROVIDER:myphy = "myhello"
+
+====================================================================================
+we already have PROVIDE variable in myhello recipe equal to myphy and
+now let us add same value to PROVIDE variable in mygit recipe
+so we have same value for provide variable in myhello and mygit
+====================================================================================
+
+in mygit_1.0.bb
+	PROVIDES += "myphy"
+	
+$ cd /meta-mylayer/recipes-example/
+	
+$ grep -nr 'PROVIDE' .
+
+so lets see when we do bitbake myphy which recipe it will pickup
+
+$ bitbake myphy
+
+$ bitbake -c cleanall myphy
+
+$ vim conf/local.conf
+
+	PREFERRED_PROVIDER:myphy = "myhello"
+	
+$ bitbake myphy
+
+$ bitbake -c cleanall myphy
+
+$ vim conf/local.conf
+
+	PREFERRED_PROVIDER:myphy = "mygit"
+	
+$ bitbake myphy
+
+$ bitbake -c cleanall myphy
+
+
+
+
+$ cd poky
+
+$ grep -nr 'PROVIDES' meta/classes/kernel*
+
+$ vi ./meta/recipes-kernel/linux/linux-yocto-tiny_5.2.bb
+
+$ vi ./meta/recipes-kernel/linux/linux-yocto.inc
+
+
+
+
+
+
+

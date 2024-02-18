@@ -1,0 +1,497 @@
+Yocto Kernel Development
+---------------------------
+
+When you are doing development with kernel, you need the following:
+
+        Kernel Source
+
+        Kernel Config (.config)
+
+        Patches (If Any)
+
+Each Yocto Project release has a set of Yocto Linux kernel recipes (linux-yocto)
+
+Each release of the Yocto Project, roughly every six months, includes two or three versions of the Linux kernel with a broad range of hardware support.
+
+
+
+
+
+
+
+
+
+
+
+Selecting Yocto Linux Kernel recipe?
+------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Selecting Yocto Linux Kernel recipe?
+------------------------------------
+
+All kernel recipes provides virtual target (virtual/kernel)
+
+PROVIDES += "virtual/kernel"
+
+$ bitbake virtual/kernel
+
+PREFERRED_VERSION_linux-yocto ?= "4.15%"
+
+$ cd poky/meta/recipe-kerenel/linux
+
+$ ls
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Try
+--------
+
+Booting phy-image and verify the kernel image
+
+$ runqemu nographic
+
+Question
+----------
+
+What is the command to check kernel version?
+
+$ uname -a
+
+$ uname -r
+
+Try
+--------
+
+Find out the recipe of kernel?
+
+$ bitbake -e phy-image | grep PREFERRED_PROVIDER_virtual/kernel
+
+$ bitbake -e phy-image | grep PREFERRED_VERSION_linux-yocto
+
+
+now lets change preferred kernel version to other version
+
+$ vim conf/local.conf
+	
+	PREFERRED_VERSION_linux-yocto = "5.10"
+	
+
+$ bitbake phy-image
+
+$ vim conf/local.conf
+	
+	PREFERRED_VERSION_linux-yocto = "5.10%"
+	
+
+$ bitbake phy-image
+
+$ runqemu nographic
+
+$ uname -r
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Linux Kernel Recipes in Yocto
+--------------------------------
+
+There are basically two ways of compiling a kernel in the Yocto Project:
+
+	By using the linux-yocto recipe provided in poky
+
+	By using a fully custom kernel recipe
+
+How do we know which recipe is used?
+-------------------------------------
+
+Machine file specifies which kernel is used using PREFERRED_PROVIDER_virtual/kernel
+
+
+How do we know which version of recipe is used?
+-----------------------------------------------
+
+PREFERRED_VERSION_<kernel_provider>
+
+
+$ cd poky/meta/conf/machine/
+
+$ vim qemux86-64.conf
+
+$ vim include/qemu.inc
+
+For this machine prefered version is not mantioned by prefered provider
+so the latest version is used by prefered provider.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Creating a new kernel recipe
+------------------------------
+
+The OpenEmbedded build system needs to be able to build a kernel for the machine.
+
+If you are creating a new kernel recipe, normal recipe-writing rules apply 
+
+	setting up a SRC_URI,
+
+	specify any necessary patches,
+
+	set S to point at the source code
+
+	provide a defconfig file
+
+	inherit the kernel.bbclass
+
+kernel.bbclass
+--------------
+
+The kernel class handles building Linux kernels.
+
+The class contains code to build all kernel trees. 
+
+
+
+========================================================
+Goto meta-mylayer and 
+
+first create recipes-kernel/linux/ directories
+
+in linux create phy-linux_1.0.bb recipe
+
+$ vim conf/local.conf
+
+	PREFERRED_PROVIDER_virtual/kernel = "phy-linux"
+	
+$ bitbake phy-linux
+
+$ vim poky/meta/classes/kernel.bbclass
+
+add checksum sha256sum to kernel recipe .bb file
+
+
+$ bitbake phy-linux
+
+add defconfig in new created files folder
+
+update SRC_URI variable in kernel recipe
+
+$ bitbake phy-linux
+
+$ bitbake phy-linux | grep ^S=
+
+$ ls {S}
+
+$ bitbake phy-linux | grep ^WORKDIR=
+
+$ ls {WORKDIR}
+
+in kernel recipe add S variable
+
+	S = "${WORKDIR}/linux-6.5.6"
+
+$ bitbake phy-linux
+
+
+sudo apt-get install libelf-dev
+
+$ bitbake phy-linux
+
+
+
+$ bitbake phy-linux | grep ^WORKDIR=
+
+$ cd {WORKDIR}
+
+$ bitbake phy-image
+
+$ runqemu nographic
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CONFIG_LOCALVERSION
+---------------------
+
+This allows you to append an extra string to the end of your kernel version.
+
+This will show up when you enter a uname command, for example
+
+Bitbake provides a wrapper around the menuconfig target
+
+$ bitbake -c menuconfig virtual/kernel
+
+Note: This requires an existing configuration to start the process
+
+        To get an initial configuration, execute "bitbake -c kernel_configme virtual/kernel"
+
+This modifies the .config in the working source directory
+
+        Make sure to capture these changes as subsequent changes will overwrite your changes
+
+After executing menuconfig, which modifies the .config directly the workdir, you could use the '-C' variant for the compile step.
+
+This tells bitbake to invalidate the SSTATE cache and re-runs the task
+
+$ bitbake -C compile virtual/kernel
+
+
+
+try
+==================
+
+$ bitbake -c menuconfig virtual/kernel
+
+phy-linux confihuration menuconfig open 
+
+select General setup
+		select local version
+			-PHYTEC
+
+$ bitbake phy-image
+
+$ runqemu nographic
+
+	uname -r
+	uname -a
+	
+The problem now is after cleaning the workdir savechanges are not there
+
+$ bitbake -c clean phy-linux
+
+$ bitbake phy-image
+
+$ runqemu nographic
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+savedefconfig
+---------------
+
+$ bitbake -c savedefconfig virtual/kernel -vDDD
+
+When invoked by the user, creates a defconfig file that can be used instead of the default defconfig
+
+
+$ cd /home/chaman/work/SBCS/06_Yocto_Project/yocto/build/tmp/work/qemux86_64-poky-linux/phy-linux/1.0-r0/build
+
+
+$ vimdiff defconfig /home/chaman/work/SBCS/06_Yocto_Project/yocto/source/meta-mylayer/recipes-kelinux/files/defconfig
+
+
+$ cp defconfig /home/chaman/work/SBCS/06_Yocto_Project/yocto/source/meta-mylayer/recipes-kelinux/files/defconfig
+
+$ bitbake -c clean phy-linux
+
+
+
+
+
+
+
+
+
+
+
+
+
+Try:
+-------
+
+Kernel recipe when you have kernel source on git repository
+
+SRC_URI = "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git;protocol=git;"
+
+
+
+
+==============================================================================
+create phy-git.bb file in linux folder
+
+vim conf/local.conf
+	
+	PREFERRED_PROVIDER_virtual/kernel = "phy-git"
+
+
+$ bitbake phy-git
+
+$ bitbake phy-image
+
+$ runqemu nographic
+
+$ bitbake phy-git | grep ^WORKDIR=
+
+===============================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Patching the Kernel
+-----------------------
+
+Try:
+--------
+
+Create a patch which will first print "Starting LWL Linux Kernel" during the boot
+
+Hint:
+-------
+You can use devshell for patching the kernel
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+To see which kernel is used, dry-run BitBake:
+$ bitbake -vn virtual/kernel
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Challenge
+------------
+
+Create a patch where the first kernel msg will be "My Image is starting"
+
+
+
+
+
+
+
+
