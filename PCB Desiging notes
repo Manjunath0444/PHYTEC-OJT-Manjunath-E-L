@@ -1,0 +1,85 @@
+
+               ---------------------PCB DESIGNING----------------
+               
+ -> PCB :- Printed Circuited  board <-
+-: PCB is integral  part of any electrical and deelectronics devices.
+-: PCB is made up of copper,dielectric material,solder mask, and silkscreen.
+
+PAD: It is refers to conductive area on board surface pad means conductive  area on the surface.
+
+-->In design level we need to create a PAD by refering datasheet like  resistor,capacitor etc..
+
+
+
+
+Two types odf PADS are:
+1.SMD
+2.Through hold fold
+ After we need to connect one piece to another piece 
+ 
+ 
+ 
+Solder Mask :- It is process of covering PCB to protect against
+,corriosion,rust,Prevent solder bridges from Forming between closely spaced solder pads.
+
+--> If we need to connect one cause to another case is called tree.
+
+Silk Screen :- It is used as a reference indicator for placing components on a PCB,marks,logos,symbols and so on.
+
+ Types of PCB :-
+  1) Single sided: one side place and another for soldered.
+  2) Double sided
+  3) Multi layer
+  4) Rigid 
+  5) Flexible
+  6) Rigid Flex
+  
+  
+SHD :-It is for used to solder on the surface of board.
+Throug fold :-It is solder the component through hole.
+  
+  Layers:--
+      
+      Pcb is a made up of corresponding  copper and solder mask and siloscreen this is layer stack up pf PCB.
+      
+      -->  This is 4 layers stackup <--
+      
+      -->  L1 is top layer.
+      -->  L2 is internal 1st layer.
+      -->  L3 is internal 2nd layer.
+      -->  L4 is internal bottom layer.
+      
+      
+Via :--Via allows a coductive connection between different layers:
+  Types of Via:
+     1) TH via
+     2) BLind via
+     3) Buried via
+     
+1) Through hda via:- It is connected from top to bottom layers.
+2) Blind via:- It is connected from to internal or bottom to      internal layers.
+3) Buried via:- It is connected between only internal layer.
+
+
+  PCB Performance classes:-
+  Class1:- 
+        General electronic products,consumers electronics,Toys, etc...
+  Class2:- 
+        Dedicated service product,professional systems,computers,communicationsystems.
+  Class3:-
+        High reliability product,radar's,weaponsytem,Satellite communication equipment,aerospace.
+        
+        
+        
+   Rigid flex PCB :- we can bend it easily 
+   
+   Rigid:- It is a solid not flex.
+   Flexible:- It is a flexible and bend easily.
+   
+:--For PCB design we have lot of software there like altum c,alto expedition pods. 
+
+
+
+
+
+
