@@ -1,0 +1,23 @@
+ char arr1[] = "CMD+RESET\r\n";                                    
+    char arr2[] = "CMD+WIFIMODE=1\r\n";                               
+    char arr[] = "CMD+CONTOAP=\"Realme 5.0GHz\",\"12345678\"\r\n";     
+    char arr3[] = "CMD+MQTTNETCFG=dev.rightech.io,1883\r\n";           
+    char arr4[] = "CMD+MQTTCONCFG=3,mqtt-elmanjunath04-8gnaz2,,,,,,,,,\r\n";
+    char arr5[] = "CMD+MQTTSTART=1\r\n";                               
+    char arr6[] = "CMD+MQTTSUB=base/relay/led1\r\n";                   
+                                                     
+                                                     
+                                                     
+                                                     
+                                                     
+int ret = snprintf(buffer, sizeof(buffer), "CMD+MQTTPUB=base/state/temperature,%s
+                                                                      
+    if (ret < 0) {                                                    
+                                                                      
+    } else {                                                                
+                                                                                
+        ssize_t wlen = write(fd, buffer, ret);                                  
+        sleep(3);                                                               
+        if (wlen == -1) {                                                       
+                                                                                
+        }  

@@ -1,0 +1,70 @@
+#include <stdio.h>                                                              
+#include <stdlib.h>                                                             
+#include <string.h>                                                             
+#include <unistd.h>                                                             
+                                                                                
+#define DIGITAL_PIN "/sys/class/gpio/PA31/value"  // Replace with the actual GPio(Export the gpio pin  echo 31 > /sys/class/gpio/export)                                                                
+                                                                                
+void error(const char *msg) {                                                   
+    perror(msg);                                                                
+    exit(1);                                                                    
+}                                                                               
+                                                                                
+int readDigitalValue() {                                                        
+    FILE *fp = fopen(DIGITAL_PIN, "r");                                         
+    if (fp == NULL) {                                                           
+        error("Error opening digital pin");                                     
+    }                                                                           
+                                                                                
+    char value;                                                                 
+    fscanf(fp, " %c", &value);  // Leading space to skip any leading whitespace 
+    fclose(fp);                                                                 
+                                                                                
+    // '1' indicates the presence of a signal (tilted), '0' indicates no signal)
+    return (value == '1');                                                      
+}                                                                               
+                                                                                
+int main() {                                                                    
+    // Assuming GPIO pin 23 is not exported, you might need to export it first  
+    FILE *exportFile = fopen("/sys/class/gpio/export", "w");                    
+    if (exportFile == NULL) {                                                   
+        error("Error exporting GPIO pin");                                      
+    }                                                                           
+                                                                                
+    fprintf(exportFile, "31");                                                  
+    fclose(exportFile);                                                         
+                                                                                
+    // Set the GPIO pin direction to in (for reading)                           
+    FILE *directionFile = fopen("/sys/class/gpio/PA31/direction", "w");         
+    if (directionFile == NULL) {                                                
+        error("Error setting direction for GPIO pin");                          
+    }                                                                           
+                                                                                
+    fprintf(directionFile, "in");                                               
+    fclose(directionFile);                                                      
+                                                                                
+    while (1) {                                                                 
+        int ballSwitchState = readDigitalValue();                               
+                                                                                
+        if (ballSwitchState) {                                                  
+            printf("Not Tilted=0\n");                                           
+        } else {                                                                
+            printf("Tilted=1\n");                                               
+        }                                                                       
+                                                                                
+        // Adjust the sleep duration based on your sensor's update rate         
+        sleep(1);  // Sleep for 1 second between readings                       
+    }                                                                           
+                                                                                
+    // Unexport GPIO pin 23 before exiting                                      
+    FILE *unexportFile = fopen("/sys/class/gpio/unexport", "w");                
+    if (unexportFile == NULL) {                                                 
+        error("Error unexporting GPIO pin");                                    
+    }                                                                           
+                                                                                
+    fprintf(unexportFile, "31");                                                
+    fclose(unexportFile);          
+   
+                                                                                                                             
+    return 0;                                                                   
+}       
